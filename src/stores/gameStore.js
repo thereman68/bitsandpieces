@@ -4,13 +4,23 @@ import { SpotifyService } from '../services/SpotifyService';
 export const useGameStore = defineStore('game', {
     state: () => ({
         gameState: 'idle', // idle, loading, playing
-        playlistId: '37i9dQZF1DXcBWIGoYBM5M', // Not used anymore, using search
+        userPlaylists: [],
+        selectedPlaylistId: null,
+        trackLimit: 10,
         tracks: [],
         gameTracks: [],
         currentTrack: null,
     }),
 
     actions: {
+        async fetchPlaylists() {
+            try {
+                this.userPlaylists = await SpotifyService.getUserPlaylists();
+            } catch (error) {
+                console.error('Failed to fetch playlists:', error);
+            }
+        },
+
         async loadTracks() {
             this.gameState = 'loading';
             this.gameTracks = [];
@@ -21,14 +31,16 @@ export const useGameStore = defineStore('game', {
                     await SpotifyService.initializeSDK(SpotifyService.accessToken);
                 }
 
-                // Fetch tracks
-                if (this.tracks.length === 0) {
-                    this.tracks = await SpotifyService.getPlaylistTracks(this.playlistId);
+                // Fetch tracks - always fetch fresh if we have a selected playlist, 
+                // or if we don't have tracks yet
+                if (this.selectedPlaylistId || this.tracks.length === 0) {
+                    this.tracks = await SpotifyService.getPlaylistTracks(this.selectedPlaylistId);
                 }
 
-                // Select 50 random tracks
+                // Select random tracks based on limit
+                const limit = Math.max(1, Math.min(50, this.trackLimit)); // Clamp between 1 and 50
                 const shuffled = [...this.tracks].sort(() => 0.5 - Math.random());
-                this.gameTracks = shuffled.slice(0, 50);
+                this.gameTracks = shuffled.slice(0, limit);
 
                 this.gameState = 'playing';
             } catch (error) {

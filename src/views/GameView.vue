@@ -14,6 +14,9 @@ onMounted(async () => {
       return;
     }
   }
+  
+  // Load playlists when mounting
+  await store.fetchPlaylists();
 });
 
 const handleStart = () => {
@@ -29,8 +32,26 @@ const handlePlayTrack = (track) => {
   <div class="player-view">
     <div v-if="store.gameState === 'idle'" class="start-screen">
       <h1>Spotify Music Player</h1>
-      <p>Load tracks and play them!</p>
-      <button @click="handleStart" class="action-btn">Load Tracks</button>
+      <p>Choose a playlist and start your quiz!</p>
+      
+      <div class="controls">
+        <div class="control-group">
+          <label>Select Playlist:</label>
+          <select v-model="store.selectedPlaylistId" class="playlist-select">
+            <option :value="null">Random Popular Tracks</option>
+            <option v-for="playlist in store.userPlaylists" :key="playlist.id" :value="playlist.id">
+              {{ playlist.name }}
+            </option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <label>Number of Tracks:</label>
+          <input type="number" v-model="store.trackLimit" min="1" max="50" class="limit-input" />
+        </div>
+
+        <button @click="handleStart" class="action-btn">Start Quiz</button>
+      </div>
     </div>
 
     <div v-else-if="store.gameState === 'loading'" class="loading-screen">
@@ -81,7 +102,7 @@ const handlePlayTrack = (track) => {
 }
 
 .action-btn {
-  padding: 1rem 2rem;
+  padding: 1rem 3rem;
   font-size: 1.2rem;
   background-color: #1db954;
   color: white;
@@ -89,7 +110,49 @@ const handlePlayTrack = (track) => {
   border-radius: 50px;
   cursor: pointer;
   transition: transform 0.2s, background-color 0.2s;
+  margin-top: 1rem;
+  font-weight: bold;
 }
+
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  max-width: 400px;
+  margin: 2rem auto;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 2rem;
+  border-radius: 12px;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  text-align: left;
+}
+
+.control-group label {
+  font-size: 0.9rem;
+  color: #b3b3b3;
+  font-weight: 600;
+}
+
+.playlist-select, .limit-input {
+  padding: 0.8rem;
+  border-radius: 6px;
+  border: 1px solid #404040;
+  background: #282828;
+  color: white;
+  font-size: 1rem;
+  font-family: inherit;
+}
+
+.playlist-select:focus, .limit-input:focus {
+  outline: none;
+  border-color: #1db954;
+}
+
 
 .action-btn:hover {
   transform: scale(1.05);

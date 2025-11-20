@@ -30,9 +30,14 @@ const router = createRouter({
   ],
 })
 
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   if (to.meta.requiresAuth && !SpotifyService.accessToken) {
-    next('/login')
+    // Try to restore session
+    if (await SpotifyService.restoreSession()) {
+      next()
+    } else {
+      next('/login')
+    }
   } else {
     next()
   }

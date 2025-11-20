@@ -80,7 +80,18 @@ export const SpotifyService = {
 
             const data = await response.json();
             this.accessToken = data.access_token;
+
+            // Store tokens and expiration
+            const expiresIn = data.expires_in; // usually 3600 seconds
+            const expirationTime = Date.now() + (expiresIn * 1000);
+
             localStorage.setItem('spotify_access_token', data.access_token);
+            localStorage.setItem('spotify_token_expiration', expirationTime);
+
+            if (data.refresh_token) {
+                localStorage.setItem('spotify_refresh_token', data.refresh_token);
+            }
+
             console.log('Token obtained successfully');
             return data.access_token;
         } catch (error) {
@@ -107,13 +118,69 @@ export const SpotifyService = {
             .replace(/=+$/, '');
     },
 
-    restoreSession() {
+    async restoreSession() {
         const token = localStorage.getItem('spotify_access_token');
-        if (token) {
-            this.accessToken = token;
-            return true;
+        const expiration = localStorage.getItem('spotify_token_expiration');
+        const refreshToken = localStorage.getItem('spotify_refresh_token');
+
+        if (!token) return false;
+
+        // Check if expired
+        if (expiration && Date.now() > parseInt(expiration)) {
+            console.log('Token expired, attempting refresh...');
+            if (refreshToken) {
+                return await this.refreshToken();
+            }
+            return false;
         }
-        return false;
+
+        this.accessToken = token;
+        return true;
+    },
+
+    async refreshToken() {
+        const refreshToken = localStorage.getItem('spotify_refresh_token');
+        if (!refreshToken) return false;
+
+        const params = new URLSearchParams({
+            client_id: clientId,
+            grant_type: 'refresh_token',
+            refresh_token: refreshToken,
+        });
+
+        try {
+            const response = await fetch('https://accounts.spotify.com/api/token', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: params,
+            });
+
+            if (!response.ok) {
+                console.error('Failed to refresh token');
+                return false;
+            }
+
+            const data = await response.json();
+
+            this.accessToken = data.access_token;
+            localStorage.setItem('spotify_access_token', data.access_token);
+
+            const expiresIn = data.expires_in;
+            const expirationTime = Date.now() + (expiresIn * 1000);
+            localStorage.setItem('spotify_token_expiration', expirationTime);
+
+            if (data.refresh_token) {
+                localStorage.setItem('spotify_refresh_token', data.refresh_token);
+            }
+
+            console.log('Token refreshed successfully');
+            return true;
+        } catch (error) {
+            console.error('Error refreshing token:', error);
+            return false;
+        }
     },
 
     // --- Web Playback SDK ---
@@ -177,33 +244,63 @@ export const SpotifyService = {
         await this.player.pause();
     },
 
-    async getPlaylistTracks(playlistId) {
-        console.log('Searching for popular tracks instead of using playlist');
-
-        // Instead of using a playlist (which is giving 404), let's search for popular tracks
-        const searchTerms = ['pop', 'rock', 'hits', 'dance', 'party'];
-        const randomTerm = searchTerms[Math.floor(Math.random() * searchTerms.length)];
-
-        const response = await fetch(`https://api.spotify.com/v1/search?q=${randomTerm}&type=track&limit=50`, {
+    async getUserPlaylists() {
+        const response = await fetch('https://api.spotify.com/v1/me/playlists?limit=50', {
             headers: {
                 'Authorization': `Bearer ${this.accessToken}`,
             },
         });
 
         if (!response.ok) {
-            const errorText = await response.text();
-            console.error('Failed to search tracks:', response.status, errorText);
-            throw new Error(`Failed to search tracks: ${response.status}`);
+            throw new Error('Failed to fetch playlists');
         }
 
         const data = await response.json();
-        console.log('Search results:', data);
+        return data.items;
+    },
 
-        if (!data.tracks || !data.tracks.items) {
-            console.error('No tracks in search response:', data);
-            throw new Error('Invalid search response');
+    async getPlaylistTracks(playlistId) {
+        // If no playlist ID is provided, fallback to search (legacy behavior support)
+        if (!playlistId) {
+            console.log('No playlist ID provided, searching for popular tracks');
+            const searchTerms = ['pop', 'rock', 'hits', 'dance', 'party'];
+            const randomTerm = searchTerms[Math.floor(Math.random() * searchTerms.length)];
+
+            const response = await fetch(`https://api.spotify.com/v1/search?q=${randomTerm}&type=track&limit=50`, {
+                headers: {
+                    'Authorization': `Bearer ${this.accessToken}`,
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to search tracks: ${response.status}`);
+            }
+
+            const data = await response.json();
+            return data.tracks.items.filter(t => t && t.is_playable !== false);
         }
 
-        return data.tracks.items.filter(t => t && t.is_playable !== false);
+        // Fetch tracks from specific playlist
+        let allTracks = [];
+        let nextUrl = `https://api.spotify.com/v1/playlists/${playlistId}/tracks?limit=50`;
+
+        // Fetch first page (we can implement pagination later if needed, for now 50 is good)
+        const response = await fetch(nextUrl, {
+            headers: {
+                'Authorization': `Bearer ${this.accessToken}`,
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to fetch playlist tracks: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // Map playlist track objects to simple track objects
+        // Playlist tracks are wrapped in a 'track' object and have 'added_at' etc.
+        return data.items
+            .map(item => item.track)
+            .filter(t => t && t.id && t.is_playable !== false);
     }
 };

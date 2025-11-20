@@ -15,6 +15,15 @@ onMounted(async () => {
     }
   }
   
+  // Test if token works at all
+  try {
+    await SpotifyService.getUserProfile();
+  } catch (error) {
+    console.error('Token validation failed:', error);
+    router.push('/login');
+    return;
+  }
+  
   // Load playlists when mounting
   await store.fetchPlaylists();
 });
@@ -26,10 +35,16 @@ const handleStart = () => {
 const handlePlayTrack = (track) => {
   store.playTrack(track);
 };
+
+const handleLogout = () => {
+  SpotifyService.logout();
+  router.push('/login');
+};
 </script>
 
 <template>
   <div class="player-view">
+    <button @click="handleLogout" class="logout-btn" title="Logout">🚪 Logout</button>
     <div v-if="store.gameState === 'idle'" class="start-screen">
       <h1>Spotify Music Player</h1>
       <p>Choose a playlist and start your quiz!</p>
@@ -84,105 +99,169 @@ const handlePlayTrack = (track) => {
   max-width: 900px;
   margin: 0 auto;
   padding: 2rem;
+  color: var(--retro-text);
+  text-align: center;
+  position: relative;
+}
+
+.logout-btn {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  background-color: var(--retro-blue);
   color: white;
-  font-family: 'Inter', sans-serif;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.1s;
+  font-weight: 700;
+  text-transform: uppercase;
+  box-shadow: 0 3px 0px #0d1f2d;
+  z-index: 100;
+}
+
+.logout-btn:hover {
+  transform: translateY(1px);
+  box-shadow: 0 2px 0px #0d1f2d;
+  background-color: #2a4a6a;
+}
+
+.logout-btn:active {
+  transform: translateY(3px);
+  box-shadow: 0px 0px 0px #000;
 }
 
 .start-screen, .loading-screen {
-  text-align: center;
   padding: 4rem 2rem;
-}
+  background: #fff;
+  border: none;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  border-radius: 4px;
+ }
 
 .start-screen h1 {
-  font-size: 3rem;
+  font-size: 3.5rem;
   margin-bottom: 1rem;
-  background: linear-gradient(45deg, #1db954, #1ed760);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--retro-red);
+  text-transform: uppercase;
+  text-shadow: 2px 2px 0px rgba(0,0,0,0.2);
+  -webkit-text-fill-color: initial;
+  background: none;
+  font-family: 'Impact', sans-serif;
+  letter-spacing: 2px;
+}
+
+.start-screen p {
+  font-size: 1.5rem;
+  color: var(--retro-text);
+  text-shadow: none;
+  font-weight: bold;
 }
 
 .action-btn {
   padding: 1rem 3rem;
-  font-size: 1.2rem;
-  background-color: #1db954;
+  font-size: 1.5rem;
+  background-color: var(--retro-red);
   color: white;
   border: none;
-  border-radius: 50px;
+  border-radius: 4px;
   cursor: pointer;
-  transition: transform 0.2s, background-color 0.2s;
-  margin-top: 1rem;
-  font-weight: bold;
+  transition: all 0.1s;
+  margin-top: 2rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  box-shadow: 0 4px 0px #B71C1C;
+}
+
+.action-btn:hover {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0px #B71C1C;
+  background-color: #D32F2F;
+}
+
+.action-btn:active {
+  transform: translate(6px, 6px);
+  box-shadow: 0px 0px 0px #000;
 }
 
 .controls {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  max-width: 400px;
+  max-width: 500px;
   margin: 2rem auto;
-  background: rgba(255, 255, 255, 0.1);
+  background: #fff;
   padding: 2rem;
-  border-radius: 12px;
-}
-
-.control-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  text-align: left;
+  border: 1px solid #ccc;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  border-radius: 4px;
 }
 
 .control-group label {
-  font-size: 0.9rem;
-  color: #b3b3b3;
-  font-weight: 600;
+  font-size: 1.2rem;
+  color: var(--retro-blue);
+  font-weight: 900;
+  text-transform: uppercase;
+  text-shadow: none;
 }
 
 .playlist-select, .limit-input {
-  padding: 0.8rem;
-  border-radius: 6px;
-  border: 1px solid #404040;
-  background: #282828;
-  color: white;
-  font-size: 1rem;
-  font-family: inherit;
+  padding: 1rem;
+  border-radius: 4px;
+  border: 2px solid #ccc;
+  background: #f9f9f9;
+  color: #333;
+  font-size: 1.2rem;
+  font-family: sans-serif;
+  font-weight: bold;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
 }
 
 .playlist-select:focus, .limit-input:focus {
   outline: none;
-  border-color: #1db954;
-}
-
-
-.action-btn:hover {
-  transform: scale(1.05);
-  background-color: #1ed760;
+  border-color: var(--retro-red);
+  background: #fff;
 }
 
 .player-interface h1 {
   text-align: center;
   margin-bottom: 2rem;
-  font-size: 2.5rem;
+  font-size: 3rem;
+  color: var(--retro-red);
+  text-shadow: 2px 2px 0px rgba(0,0,0,0.2);
+  text-transform: uppercase;
+  font-family: 'Impact', sans-serif;
+  letter-spacing: 2px;
 }
 
 .track-list {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.5rem;
 }
 
 .track-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem;
-  background: #282828;
-  border-radius: 8px;
-  transition: background 0.2s;
+  padding: 0;
+  background: #E0E0E0; /* Grey block for content */
+  border: none;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  color: #000;
+  transform: none;
+  transition: transform 0.2s;
+  margin-bottom: 1rem;
+  overflow: hidden;
 }
 
 .track-item:hover {
-  background: #3e3e3e;
+  background: #d0d0d0;
+  transform: translateY(-2px);
+  border-color: transparent;
 }
 
 .track-info {
@@ -193,46 +272,65 @@ const handlePlayTrack = (track) => {
 }
 
 .track-number {
-  font-size: 1.2rem;
-  color: #b3b3b3;
-  width: 30px;
-  text-align: center;
+  font-size: 1.5rem;
+  color: white;
+  width: 60px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  text-shadow: none;
+  background: var(--retro-red); /* Red block for number */
+  padding: 1rem;
+  border: none;
+  margin-right: 1rem;
 }
 
 .album-art {
-  width: 50px;
-  height: 50px;
-  border-radius: 4px;
-}
-
-.track-details {
-  flex: 1;
+  width: 60px;
+  height: 60px;
+  border: 3px solid #000;
+  border-radius: 0;
 }
 
 .track-name {
-  font-size: 1.1rem;
-  font-weight: 600;
+  font-size: 1.3rem;
+  font-weight: 900;
   margin-bottom: 0.25rem;
+  text-transform: uppercase;
 }
 
 .track-artist {
-  font-size: 0.9rem;
-  color: #b3b3b3;
+  font-size: 1rem;
+  color: #000;
+  font-weight: bold;
 }
 
 .play-btn {
-  padding: 0.6rem 1.5rem;
-  font-size: 1rem;
-  background-color: #1db954;
+  padding: 0.8rem 2rem;
+  font-size: 1.2rem;
+  background-color: var(--retro-red);
   color: white;
   border: none;
-  border-radius: 25px;
+  border-radius: 4px;
   cursor: pointer;
-  transition: background-color 0.2s;
-  min-width: 100px;
+  transition: all 0.1s;
+  min-width: 120px;
+  font-weight: 900;
+  text-transform: uppercase;
+  box-shadow: 0 4px 0px #B71C1C;
+  margin-right: 1rem;
 }
 
 .play-btn:hover {
-  background-color: #1ed760;
+  background-color: #D32F2F;
+  transform: translateY(2px);
+  box-shadow: 0 2px 0px #B71C1C;
+}
+
+.play-btn:active {
+  transform: translateY(4px);
+  box-shadow: none;
 }
 </style>

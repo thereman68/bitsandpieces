@@ -16,8 +16,11 @@ export const useGameStore = defineStore('game', {
         async fetchPlaylists() {
             try {
                 this.userPlaylists = await SpotifyService.getUserPlaylists();
+                console.log('Successfully fetched', this.userPlaylists.length, 'playlists');
             } catch (error) {
                 console.error('Failed to fetch playlists:', error);
+                // Set empty array so the app can still work with random tracks
+                this.userPlaylists = [];
             }
         },
 

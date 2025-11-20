@@ -34,6 +34,7 @@ export const SpotifyService = {
 
         console.log('Login called with clientId:', clientId);
         console.log('Redirect URI:', redirectUri);
+        console.log('Requesting scopes:', SCOPES);
         const authUrl = `https://accounts.spotify.com/authorize?${params.toString()}`;
         console.log('Redirecting to:', authUrl);
         window.location.replace(authUrl);
@@ -93,6 +94,12 @@ export const SpotifyService = {
             }
 
             console.log('Token obtained successfully');
+
+            // Debug: Check what scopes we actually have
+            if (data.scope) {
+                console.log('Granted scopes:', data.scope);
+            }
+
             return data.access_token;
         } catch (error) {
             console.error('Error in handleCallback:', error);
@@ -183,6 +190,24 @@ export const SpotifyService = {
         }
     },
 
+    logout() {
+        // Clear all stored tokens and session data
+        localStorage.removeItem('spotify_access_token');
+        localStorage.removeItem('spotify_refresh_token');
+        localStorage.removeItem('spotify_token_expiration');
+        localStorage.removeItem('spotify_verifier');
+
+        this.accessToken = null;
+        this.deviceId = null;
+
+        if (this.player) {
+            this.player.disconnect();
+            this.player = null;
+        }
+
+        console.log('Logged out successfully');
+    },
+
     // --- Web Playback SDK ---
 
     initializeSDK(token) {
@@ -252,11 +277,39 @@ export const SpotifyService = {
         });
 
         if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            console.error('Playlist fetch failed:', {
+                status: response.status,
+                statusText: response.statusText,
+                error: errorData
+            });
             throw new Error('Failed to fetch playlists');
         }
 
         const data = await response.json();
         return data.items;
+    },
+
+    async getUserProfile() {
+        const response = await fetch('https://api.spotify.com/v1/me', {
+            headers: {
+                'Authorization': `Bearer ${this.accessToken}`,
+            },
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            console.error('Profile fetch failed:', {
+                status: response.status,
+                statusText: response.statusText,
+                error: errorData
+            });
+            throw new Error('Failed to fetch user profile');
+        }
+
+        const data = await response.json();
+        console.log('User profile:', data);
+        return data;
     },
 
     async getPlaylistTracks(playlistId) {

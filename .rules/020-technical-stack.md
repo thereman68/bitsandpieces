@@ -12,3 +12,4 @@ trigger: manual
 - Bootstrap for responsive design
 - Check package.json for other dependencies
 - Suggest new dependencies before adding them
+- Use Supabase for database
